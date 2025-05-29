@@ -1,5 +1,6 @@
 // src/components/ListagemVeiculos.jsx
 import React, { useState, useEffect } from 'react';
+import CadastroVeiculo from './CadastroVeiculo';
 
 export default function ListagemVeiculos() {
   const [veiculos, setVeiculos] = useState([]);
@@ -7,6 +8,10 @@ export default function ListagemVeiculos() {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [filtroPlaca, setFiltroPlaca] = useState('');
   const [filtroCliente, setFiltroCliente] = useState('');
+
+  // Modal de criação/edição
+  const [modalOpen, setModalOpen] = useState(false);
+  const [veiculoIdEdit, setVeiculoIdEdit] = useState(null);
 
   useEffect(() => {
     fetchVeiculos(pagina);
@@ -27,14 +32,34 @@ export default function ListagemVeiculos() {
       setTotalPaginas(data.totalPages);
     } else {
       setVeiculos(Array.isArray(data) ? data : [data]);
-      setTotalPaginas(1);
       setPagina(1);
+      setTotalPaginas(1);
     }
+  }
+
+  function abrirModal(id = null) {
+    setVeiculoIdEdit(id);
+    setModalOpen(true);
+  }
+
+  function fecharModal() {
+    setModalOpen(false);
+    setVeiculoIdEdit(null);
+    fetchVeiculos(pagina);
   }
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md mt-4">
-      <h4 className="text-xl font-bold mb-4">Pesquisa de veículos</h4>
+      {/* Cabeçalho com botão criar veículo */}
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-xl font-bold">Pesquisa de veículos</h4>
+        <button
+          onClick={() => abrirModal(null)}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer"
+        >
+          Criar Veículo
+        </button>
+      </div>
 
       {/* filtros */}
       <div className="flex space-x-4 mb-4">
@@ -60,7 +85,7 @@ export default function ListagemVeiculos() {
         </div>
         <button
           onClick={() => { setFiltroPlaca(''); setFiltroCliente(''); fetchVeiculos(1); }}
-          className="self-end px-4 py-2 bg-gray-200 rounded"
+          className="self-end px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
         >
           Limpar
         </button>
@@ -88,8 +113,8 @@ export default function ListagemVeiculos() {
               <td className="border p-2">{v.nome || v.nome_cliente}</td>
               <td className="border p-2">
                 <button
-                  onClick={() => window.location.href = `/veiculos?placa=${v.placa}`}
-                  className="px-2 py-1 bg-blue-500 text-white rounded"
+                  onClick={() => abrirModal(v.id_veiculo)}
+                  className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
                 >
                   Detalhes
                 </button>
@@ -106,19 +131,28 @@ export default function ListagemVeiculos() {
         <button
           disabled={pagina===1}
           onClick={() => fetchVeiculos(pagina-1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-        >
-          Anterior
-        </button>
+          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 cursor-pointer"
+        >Anterior</button>
         <span>{pagina} / {totalPaginas}</span>
         <button
           disabled={pagina===totalPaginas}
           onClick={() => fetchVeiculos(pagina+1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-        >
-          Próximo
-        </button>
+          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 cursor-pointer"
+        >Próximo</button>
       </div>
+
+      {/* Modal de criação/edição */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-auto">
+            <CadastroVeiculo
+              veiculoId={veiculoIdEdit}
+              source_url={''}
+              onClose={fecharModal}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

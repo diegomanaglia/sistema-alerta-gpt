@@ -14,12 +14,6 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
-      // se você usa fetch("/veiculos/...") no front:
-      '/veiculos': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      // e, se precisar, adicione outros endpoints (ex: /ordem_servico)
     }
   }
 })

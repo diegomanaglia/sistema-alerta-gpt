@@ -1,6 +1,6 @@
 // src/components/ListagemClientes.jsx
 import React, { useState, useEffect } from 'react';
-// import ModalCliente from './ModalCliente';
+import ModalCliente from './ModalCliente';
 
 export default function ListagemClientes() {
   const [clientes, setClientes] = useState([]);
@@ -17,8 +17,8 @@ export default function ListagemClientes() {
   async function fetchClientes(p = 1) {
     try {
       const url = filtroTermo
-        ? `/clientes/pesquisaClientes/${filtroTermo}`
-        : `/clientes/getClientes?page=${p}`;
+        ? `/api/clientes/pesquisaClientes/${filtroTermo}`
+        : `/api/clientes/getClientes?page=${p}`;
       const res = await fetch(url);
       const data = await res.json();
 

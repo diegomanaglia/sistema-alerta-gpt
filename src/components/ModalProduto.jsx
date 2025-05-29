@@ -1,18 +1,24 @@
 // src/components/ModalProduto.jsx
 import React, { useState, useEffect } from 'react';
 
-export default function ModalProduto({ produtoId, isOpen, onClose }) {
+export default function ModalProduto({ produtoId, isOpen, onClose, refreshList }) {
+  // Campos do produto
   const [sku, setSku] = useState('');
   const [apelido, setApelido] = useState('');
-  const [marca, setMarca] = useState('');
+
   const [marcas, setMarcas] = useState([]);
+  const [marca, setMarca] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [categoria, setCategoria] = useState('');
+
   const [categorias, setCategorias] = useState([]);
-  const [subcategoria, setSubcategoria] = useState('');
+  const [categoria, setCategoria] = useState('');
+
   const [subcategorias, setSubcategorias] = useState([]);
-  const [viscosidade, setViscosidade] = useState('');
+  const [subcategoria, setSubcategoria] = useState('');
+
   const [viscosidades, setViscosidades] = useState([]);
+  const [viscosidade, setViscosidade] = useState('');
+
   const [codigoBarras, setCodigoBarras] = useState('');
   const [valorCusto, setValorCusto] = useState('');
   const [valorVenda, setValorVenda] = useState('');
@@ -20,205 +26,176 @@ export default function ModalProduto({ produtoId, isOpen, onClose }) {
   const [qtdMinima, setQtdMinima] = useState('');
   const [qtdIdeal, setQtdIdeal] = useState('');
   const [obs, setObs] = useState('');
-  const [status, setStatus] = useState('');
-  const statusOptions = ['ATIVO', 'INATIVO', 'RESTRIÇÃO'];
+  const [status, setStatus] = useState('ATIVO');
 
+  // Nested modal state
+  const [nestedOpen, setNestedOpen] = useState(false);
+  const [nestedType, setNestedType] = useState('');
+  const [newValue, setNewValue] = useState('');
+
+  // Carregar listas estáticas
   useEffect(() => {
     if (!isOpen) return;
-    // Carrega dados iniciais
-    async function loadData() {
-      // Produto
-      const resProd = await fetch(`/api/produtos/getUmProduto/${produtoId}`);
-      const prod = await resProd.json();
-      setSku(prod.sku);
-      setApelido(prod.apelido);
-      setDescricao(prod.descricao);
-      setCategoria(prod.categoria);
-      setSubcategoria(prod.subcategoria);
-      setViscosidade(prod.viscosidade);
-      setCodigoBarras(prod.cod_barras);
-      setValorCusto(prod.custo);
-      setValorVenda(prod.valor_venda);
-      setQtdDisponivel(prod.qtd_estoque);
-      setQtdMinima(prod.qtd_minima);
-      setQtdIdeal(prod.qtd_ideal);
-      setObs(prod.observacoes);
-      setStatus(prod.status);
-
-      // Marcas
-      const resMarcas = await fetch('/api/produtos/getMarcas');
-      setMarcas(await resMarcas.json());
-      setMarca(prod.marca);
-
-      // Categorias
-      const resCats = await fetch('/api/produtos/getCategorias');
-      setCategorias(await resCats.json());
-
-      // Subcategorias
-      const resSub = await fetch(`/api/produtos/getSubCategoriaByCategoriaId/${prod.categoria}`);
-      setSubcategorias(await resSub.json());
-
-      // Viscosidades (se categoria óleo)
-      if (prod.categoria === 1) {
-        const resVis = await fetch('/api/produtos/getViscosidades');
-        setViscosidades(await resVis.json());
-      }
+    fetch('/api/produtos/getMarcas')
+      .then(r => r.json()).then(setMarcas);
+    fetch('/api/produtos/getCategorias')
+      .then(r => r.json()).then(setCategorias);
+    if (produtoId) {
+      fetch(`/api/produtos/getUmProduto/${produtoId}`)
+        .then(r => r.json())
+        .then(p => {
+          setSku(p.sku);
+          setApelido(p.apelido);
+          setMarca(String(p.marca));
+          setDescricao(p.descricao);
+          setCategoria(String(p.categoria));
+          setSubcategoria(String(p.subcategoria));
+          setViscosidade(p.viscosidade || '');
+          setCodigoBarras(p.codigo_barras);
+          setValorCusto(p.valor_custo);
+          setValorVenda(p.valor_venda);
+          setQtdDisponivel(p.qtd_disponivel);
+          setQtdMinima(p.qtd_minima);
+          setQtdIdeal(p.qtd_ideal);
+          setObs(p.obs);
+          setStatus(p.status);
+        });
+    } else {
+      // nova criação
+      setSku(''); setApelido(''); setMarca(''); setDescricao('');
+      setCategoria(''); setSubcategoria(''); setViscosidade('');
+      setCodigoBarras(''); setValorCusto(''); setValorVenda('');
+      setQtdDisponivel(''); setQtdMinima(''); setQtdIdeal(''); setObs(''); setStatus('ATIVO');
     }
-    loadData();
   }, [isOpen, produtoId]);
 
-  // Ao mudar categoria, atualiza subcategorias e viscosidades
+  // Sempre que categoria mudar, recarrega subcategorias e, se for óleo (id 1), viscosidades
   useEffect(() => {
-    async function updateDeps() {
-      if (!categoria) return;
-      const resSub = await fetch(`/api/produtos/getSubCategoriaByCategoriaId/${categoria}`);
-      setSubcategorias(await resSub.json());
-      if (categoria === 1) {
-        const resVis = await fetch('/api/produtos/getViscosidades');
-        setViscosidades(await resVis.json());
+    if (!isOpen) return;
+    if (categoria) {
+      fetch(`/api/produtos/getSubCategoriaByCategoriaId/${categoria}`)
+        .then(r => r.json()).then(setSubcategorias);
+      if (categoria === '1') {
+        fetch('/api/produtos/getViscosidades')
+          .then(r => r.json()).then(setViscosidades);
       } else {
-        setViscosidades([]);
         setViscosidade('');
       }
     }
-    updateDeps();
-  }, [categoria]);
+  }, [categoria, isOpen]);
 
-  async function handleSave() {
-    const payload = {
-      id: produtoId,
-      sku,
-      apelido,
-      marca: parseInt(marca),
-      descricao,
-      categoria: parseInt(categoria),
-      subcategoria: parseInt(subcategoria),
-      viscosidade,
-      codigo_barras: codigoBarras,
-      valor_custo: parseFloat(valorCusto),
-      valor_venda: parseFloat(valorVenda),
-      qtd_disponivel: parseFloat(qtdDisponivel),
-      qtd_minima: parseFloat(qtdMinima),
-      qtd_ideal: parseFloat(qtdIdeal),
-      observacoes: obs,
-      status
-    };
-    await fetch('/api/produtos/editarProduto', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+  // Nested modal: criar novo item genérico
+  async function handleNestedSave() {
+    let endpoint = '';
+    let body = {};
+    switch (nestedType) {
+      case 'marca': endpoint = '/api/produtos/salvarMarca'; body = { marca: newValue }; break;
+      case 'categoria': endpoint = '/api/produtos/salvarCategoria'; body = { categoria: newValue }; break;
+      case 'subcategoria': endpoint = '/api/produtos/salvarSubCategoria'; body = { categoria, subcategoria: newValue }; break;
+      case 'viscosidade': endpoint = '/api/produtos/salvarViscosidade'; body = { viscosidade: newValue }; break;
+    }
+    await fetch(endpoint, {
+      method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body)
     });
-    onClose();
-    window.location.href = `/produtos?q=${produtoId}`;
+    // Recarrega a lista afetada
+    if (nestedType === 'marca') fetch('/api/produtos/getMarcas').then(r=>r.json()).then(setMarcas);
+    if (nestedType === 'categoria') fetch('/api/produtos/getCategorias').then(r=>r.json()).then(setCategorias);
+    if (nestedType === 'subcategoria') fetch(`/api/produtos/getSubCategoriaByCategoriaId/${categoria}`).then(r=>r.json()).then(setSubcategorias);
+    if (nestedType === 'viscosidade') fetch('/api/produtos/getViscosidades').then(r=>r.json()).then(setViscosidades);
+    setNestedOpen(false);
+    setNewValue('');
+  }
+
+  // Submeter criação ou edição
+  async function handleSubmit() {
+    const payload = { sku, apelido, marca: parseInt(marca), descricao, categoria: parseInt(categoria), subcategoria: parseInt(subcategoria), viscosidade, codigo_barras: codigoBarras, valor_custo: parseFloat(valorCusto), valor_venda: parseFloat(valorVenda), qtd_disponivel: parseFloat(qtdDisponivel), qtd_minima: parseFloat(qtdMinima), qtd_ideal: parseFloat(qtdIdeal), obs, status };
+    const url = produtoId ? '/api/produtos/editarProduto' : '/api/produtos/criarProduto';
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, id: produtoId }) });
+    if (res.ok) {
+      alert(produtoId ? 'Produto atualizado!' : 'Produto criado!');
+      onClose();
+      refreshList();
+    } else {
+      alert('Erro ao salvar produto.');
+    }
   }
 
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg w-full max-w-2xl p-6 overflow-auto max-h-full">
-        <button onClick={onClose} className="float-right text-gray-500 hover:text-gray-700">&times;</button>
-        <h4 className="text-xl font-bold mb-4">Editar Produto</h4>
+      <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="text-xl font-bold">{produtoId ? 'Editar Produto' : 'Novo Produto'}</h4>
+          <button onClick={onClose} className="text-2xl leading-none cursor-pointer">×</button>
+        </div>
         <div className="space-y-4">
-          {/* Código / SKU */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="sku" className="block text-sm font-medium">Código / SKU</label>
-              <input id="sku" type="text" value={sku} onChange={e => setSku(e.target.value)} className="mt-1 block w-full border rounded p-2" />
-            </div>
-            <div>
-              <label htmlFor="apelido" className="block text-sm font-medium">Apelido</label>
-              <input id="apelido" type="text" value={apelido} onChange={e => setApelido(e.target.value)} className="mt-1 block w-full border rounded p-2" />
-            </div>
-          </div>
-          {/* Marca / Descrição */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="marca" className="block text-sm font-medium">Marca</label>
-              <select id="marca" value={marca} onChange={e => setMarca(e.target.value)} className="mt-1 block w-full border rounded p-2">
-                <option value="">Selecionar</option>
-                {marcas.map(m => <option key={m.id_marca} value={m.id_marca}>{m.marca}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="descricao" className="block text-sm font-medium">Descrição</label>
-              <input id="descricao" type="text" value={descricao} onChange={e => setDescricao(e.target.value)} className="mt-1 block w-full border rounded p-2" />
-            </div>
-          </div>
-          {/* Categoria / Subcategoria */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="categoria" className="block text-sm font-medium">Categoria</label>
-              <select id="categoria" value={categoria} onChange={e => setCategoria(e.target.value)} className="mt-1 block w-full border rounded p-2">
-                <option value="">Selecionar</option>
-                {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.categoria}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="subcategoria" className="block text-sm font-medium">Sub-categoria</label>
-              <select id="subcategoria" value={subcategoria} onChange={e => setSubcategoria(e.target.value)} className="mt-1 block w-full border rounded p-2">
-                <option value="">Selecionar</option>
-                {subcategorias.map(s => <option key={s.id_subcategoria} value={s.id_subcategoria}>{s.subcategoria}</option>)}
-              </select>
-            </div>
-          </div>
-          {/* Viscosidade */}
-          {viscosidades.length > 0 && (
-            <div>
-              <label htmlFor="viscosidade" className="block text-sm font-medium">Viscosidade</label>
-              <select id="viscosidade" value={viscosidade} onChange={e => setViscosidade(e.target.value)} className="mt-1 block w-full border rounded p-2">
-                <option value="">Selecionar</option>
-                {viscosidades.map(v => <option key={v.viscosidade} value={v.viscosidade}>{v.viscosidade}</option>)}
-              </select>
-            </div>
-          )}
-          {/* Código de Barras */}
-          <div>
-            <label htmlFor="codigo_barras" className="block text-sm font-medium">Código de Barras</label>
-            <input id="codigo_barras" type="text" value={codigoBarras} onChange={e => setCodigoBarras(e.target.value)} className="mt-1 block w-full border rounded p-2" />
-          </div>
-          {/* Valores e Quantidades */}
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="valor_custo" className="block text-sm font-medium">Valor Custo</label>
-              <input id="valor_custo" type="number" value={valorCusto} onChange={e => setValorCusto(e.target.value)} className="mt-1 block w-full border rounded p-2" />
+            <div><label className="block text-sm">SKU</label><input value={sku} onChange={e=>setSku(e.target.value)} className="border p-2 rounded w-full"/></div>
+            <div><label className="block text-sm">Apelido</label><input value={apelido} onChange={e=>setApelido(e.target.value)} className="border p-2 rounded w-full"/></div>
+            <div className="flex items-end space-x-2">
+              <div className="flex-1"><label className="block text-sm">Marca</label><select value={marca} onChange={e=>setMarca(e.target.value)} className="border p-2 rounded w-full">
+                <option value="">Selecione</option>{marcas.map(m=> <option key={m.id_marca} value={m.id_marca}>{m.marca}</option>)}</select></div>
+              <button onClick={()=>{setNestedType('marca');setNestedOpen(true);}} className="text-2xl">＋</button>
             </div>
-            <div>
-              <label htmlFor="valor_venda" className="block text-sm font-medium">Valor Venda</label>
-              <input id="valor_venda" type="number" value={valorVenda} onChange={e => setValorVenda(e.target.value)} className="mt-1 block w-full border rounded p-2" />
+          </div>
+          <div><label className="block text-sm">Descrição</label><input value={descricao} onChange={e=>setDescricao(e.target.value)} className="border p-2 rounded w-full"/></div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="flex items-end space-x-2">
+              <div className="flex-1"><label className="block text-sm">Categoria</label><select value={categoria} onChange={e=>setCategoria(e.target.value)} className="border p-2 rounded w-full">
+                <option value="">Selecione</option>{categorias.map(c=> <option key={c.id_categoria} value={c.id_categoria}>{c.categoria}</option>)}</select></div>
+              <button onClick={()=>{setNestedType('categoria');setNestedOpen(true);}} className="text-2xl">＋</button>
             </div>
-            <div>
-              <label htmlFor="qtd_disponivel" className="block text-sm font-medium">QTD Disponível</label>
-              <input id="qtd_disponivel" type="number" value={qtdDisponivel} onChange={e => setQtdDisponivel(e.target.value)} className="mt-1 block w-full border rounded p-2" />
+            <div className="flex items-end space-x-2">
+              <div className="flex-1"><label className="block text-sm">Subcategoria</label><select value={subcategoria} onChange={e=>setSubcategoria(e.target.value)} className="border p-2 rounded w-full">
+                <option value="">Selecione</option>{subcategorias.map(s=> <option key={s.id_subcategoria} value={s.id_subcategoria}>{s.subcategoria}</option>)}</select></div>
+              <button onClick={()=>{setNestedType('subcategoria');setNestedOpen(true);}} className="text-2xl">＋</button>
             </div>
+            {categoria === '1' && <div className="flex items-end space-x-2">
+              <div className="flex-1"><label className="block text-sm">Viscosidade</label><select value={viscosidade} onChange={e=>setViscosidade(e.target.value)} className="border p-2 rounded w-full">
+                <option value="">Selecione</option>{viscosidades.map(v=> <option key={v.viscosidade} value={v.viscosidade}>{v.viscosidade}</option>)}</select></div>
+              <button onClick={()=>{setNestedType('viscosidade');setNestedOpen(true);}} className="text-2xl">＋</button>
+            </div>}
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="qtd_minima" className="block text-sm font-medium">QTD Mínima</label>
-              <input id="qtd_minima" type="number" value={qtdMinima} onChange={e => setQtdMinima(e.target.value)} className="mt-1 block w-full border rounded p-2" />
-            </div>
-            <div>
-              <label htmlFor="qtd_ideal" className="block text-sm font-medium">QTD Ideal</label>
-              <input id="qtd_ideal" type="number" value={qtdIdeal} onChange={e => setQtdIdeal(e.target.value)} className="mt-1 block w-full border rounded p-2" />
-            </div>
-            <div>
-              <label htmlFor="status" className="block text-sm font-medium">Status</label>
-              <select id="status" value={status} onChange={e => setStatus(e.target.value)} className="mt-1 block w-full border rounded p-2">
-                <option value="">Selecionar</option>
-                {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-              </select>
-            </div>
+            <div><label className="block text-sm">Código Barras</label><input value={codigoBarras} onChange={e=>setCodigoBarras(e.target.value)} className="border p-2 rounded w-full"/></div>
+            <div><label className="block text-sm">Valor Custo</label><input type="number" value={valorCusto} onChange={e=>setValorCusto(e.target.value)} className="border p-2 rounded w-full"/></div>
+            <div><label className="block text-sm">Valor Venda</label><input type="number" value={valorVenda} onChange={e=>setValorVenda(e.target.value)} className="border p-2 rounded w-full"/></div>
           </div>
-          {/* Observações */}
-          <div>
-            <label htmlFor="obs" className="block text-sm font-medium">Observações</label>
-            <input id="obs" type="text" value={obs} onChange={e => setObs(e.target.value)} className="mt-1 block w-full border rounded p-2" />
+          <div className="grid grid-cols-3 gap-4">
+            <div><label className="block text-sm">Qtd Disponível</label><input type="number" value={qtdDisponivel} onChange={e=>setQtdDisponivel(e.target.value)} className="border p-2 rounded w-full"/></div>
+            <div><label className="block text-sm">Qtd Mínima</label><input type="number" value={qtdMinima} onChange={e=>setQtdMinima(e.target.value)} className="border p-2 rounded w-full"/></div>
+            <div><label className="block text-sm">Qtd Ideal</label><input type="number" value={qtdIdeal} onChange={e=>setQtdIdeal(e.target.value)} className="border p-2 rounded w-full"/></div>
           </div>
-          {/* Botão Salvar */}
-          <div className="mt-6 text-right">
-            <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Salvar</button>
-          </div>
+          <div><label className="block text-sm">Observações</label><input value={obs} onChange={e=>setObs(e.target.value)} className="border p-2 rounded w-full"/></div>
+          <div><label className="block text-sm">Status</label><select value={status} onChange={e=>setStatus(e.target.value)} className="border p-2 rounded w-full">
+            <option value="ATIVO">ATIVO</option><option value="INATIVO">INATIVO</option><option value="RESTRIÇÃO">RESTRIÇÃO</option>
+          </select></div>
+        </div>
+        <div className="mt-6 flex justify-end space-x-2">
+          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancelar</button>
+          <button onClick={handleSubmit} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar</button>
         </div>
       </div>
+
+      {/* Nested Modal para criação de marca/categoria/subcategoria/viscosidade */}
+      {nestedOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg w-full max-w-sm">
+            <h4 className="text-lg font-bold mb-2">Cadastro de {nestedType}</h4>
+            <input
+              type="text"
+              value={newValue}
+              onChange={e => setNewValue(e.target.value)}
+              className="border p-2 rounded w-full mb-4"
+              placeholder={`Nova ${nestedType}`}
+            />
+            <div className="flex justify-end space-x-2">
+              <button onClick={() => setNestedOpen(false)} className="px-3 py-1 bg-gray-200 rounded">Cancelar</button>
+              <button onClick={handleNestedSave} className="px-3 py-1 bg-green-600 text-white rounded">Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
