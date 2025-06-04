@@ -1,7 +1,7 @@
 // src/components/CadastroVeiculo.jsx
 import React, { useState, useEffect } from 'react';
 
-export default function CadastroVeiculo({ veiculoId = null, onClose }) {
+export default function CadastroVeiculo({ veiculoId = null, onClose, onCreated }) {
   // Estados principais
   const [placa, setPlaca] = useState('');
   const [marca, setMarca] = useState('');
@@ -40,23 +40,34 @@ export default function CadastroVeiculo({ veiculoId = null, onClose }) {
       .catch(console.error);
   }, [marca]);
 
-  // Se for edição, busca dados do veículo
+  // Se for edição, busca dados do veículo, senão limpa o formulário
   useEffect(() => {
-    if (!veiculoId) return;
-    fetch(`/api/veiculos/getVeiculoById/${veiculoId}`)
-      .then(res => res.json())
-      .then(data => {
-        setPlaca(data.placa || '');
-        setMarca(data.id_marca_veiculo?.toString() || '');
-        setModelo(data.id_modelo_veiculo?.toString() || '');
-        setAno(data.ano?.toString() || '');
-        setCor(data.cor || '');
-        setTipoComb(data.tipo_comb || '');
-        setMotorizacao(data.motorizacao || '');
-        setCategoria(data.categoria_veiculo || '');
-        setClienteSelecionado({ id: data.id_cliente_veiculo, nome: data.nome });
-      })
-      .catch(console.error);
+    if (veiculoId) {
+      fetch(`/api/veiculos/getVeiculoById/${veiculoId}`)
+        .then(res => res.json())
+        .then(data => {
+          setPlaca(data.placa || '');
+          setMarca(data.id_marca_veiculo?.toString() || '');
+          setModelo(data.id_modelo_veiculo?.toString() || '');
+          setAno(data.ano?.toString() || '');
+          setCor(data.cor || '');
+          setTipoComb(data.tipo_comb || '');
+          setMotorizacao(data.motorizacao || '');
+          setCategoria(data.categoria_veiculo || '');
+          setClienteSelecionado({ id: data.id_cliente_veiculo, nome: data.nome });
+        })
+        .catch(console.error);
+    } else {
+      setPlaca('');
+      setMarca('');
+      setModelo('');
+      setAno('');
+      setCor('');
+      setTipoComb('');
+      setMotorizacao('');
+      setCategoria('');
+      setClienteSelecionado(null);
+    }
   }, [veiculoId]);
 
   // Pesquisa clientes
@@ -132,9 +143,34 @@ export default function CadastroVeiculo({ veiculoId = null, onClose }) {
           id_cliente: clienteSelecionado?.id || null
         };
         const res = await fetch('/api/veiculos/criarVeiculo', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
         });
         if (!res.ok) throw new Error('Erro ' + res.status);
+        let novoVeiculo = null;
+        try {
+          novoVeiculo = await res.json();
+        } catch {
+          /* sem corpo ou JSON inválido */
+        }
+        if (!novoVeiculo) {
+          try {
+            const r = await fetch(`/api/veiculos/getVeiculoUnico/${body.placa}`);
+            if (r.ok) novoVeiculo = await r.json();
+          } catch {
+            /* ignore */
+          }
+        }
+        if (onCreated) {
+          const veiculoInfo = novoVeiculo || {
+            placa: body.placa,
+            marca_veiculo: marcas.find(m => m.id_marca_veiculo === Number(marca))?.marca_veiculo || '',
+            modelo_veiculo: modelos.find(mo => mo.id_modelo_veiculo === Number(modelo))?.modelo_veiculo || '',
+            id_cliente: body.id_cliente
+          };
+          onCreated(veiculoInfo);
+        }
         alert('Veículo cadastrado com sucesso.');
       }
       onClose();
