@@ -21,7 +21,7 @@ export default function CampoObservacoesOS({ obs, onChange, podeEditar }) {
           <textarea
             value={obs}
             onChange={e => onChange(e.target.value)}
-            className="mt-3 w-full rounded-lg border p-3 bg-white"
+            className="mt-3 w-full rounded-lg border p-3 bg-white uppercase"
             rows={4}
             placeholder="Digite observações..."
           />
