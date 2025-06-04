@@ -1,13 +1,5 @@
 import { useState } from "react";
 
-/**
- * Hook para buscar e manipular dados de veículo por placa
- *
- * @returns {
- *   veiculo, setVeiculo, placa, setPlaca, naoEncontrado,
- *   buscarVeiculo, onPlacaChange, resetVeiculo
- * }
- */
 export default function useVeiculoPorPlaca(placaInicial = "") {
   const [veiculo, setVeiculo] = useState(null);
   const [placa, setPlaca] = useState(placaInicial.toUpperCase());
@@ -16,15 +8,9 @@ export default function useVeiculoPorPlaca(placaInicial = "") {
   async function buscarVeiculo(placaBusca) {
     const placaFinal = (placaBusca || placa).toUpperCase();
     if (!placaFinal || placaFinal.length !== 7) return;
-
-    // Se já temos um veiculo com a mesma placa, não refaça a requisição
-    if (veiculo && veiculo.placa === placaFinal) {
-      return;
-    }
-
     try {
       const res = await fetch(`/api/veiculos/getVeiculoUnico/${placaFinal}`);
-      if (!res.ok) throw new Error('Não encontrado');
+      if (!res.ok) throw new Error("Não encontrado");
       const data = await res.json();
       if (data && data.placa) {
         setVeiculo(data);
@@ -58,6 +44,6 @@ export default function useVeiculoPorPlaca(placaInicial = "") {
     buscarVeiculo,
     onPlacaChange,
     resetVeiculo,
-    setNaoEncontrado,
+    setNaoEncontrado
   };
 }
